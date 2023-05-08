@@ -8,6 +8,9 @@ hub:
   config:
     KubeSpawner:
       http_timeout: 60
+    Ec2DesktopSpawner:
+      subnet_id:
+      instance_profile_name: AmazonSSMRoleForInstancesQuickSetup
   extraConfig:
     10-ec2spawner: |
       from virtualdesktopspawner import Ec2DesktopSpawner
