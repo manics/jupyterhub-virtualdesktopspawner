@@ -15,6 +15,7 @@ from typing import Dict as DictT
 from typing import List as ListT
 from typing import Optional as OptionalT
 from typing import Tuple as TupleT
+from typing import Union as UnionT
 
 import boto3
 import botocore.loaders
@@ -768,24 +769,39 @@ class Ec2SsmInstance:
 
     @run_in_executor
     def find_ami(
-        self, *, owner: str, name: str, **kwargs: DictT[str, str]
+        self,
+        *,
+        owner: OptionalT[str] = None,
+        name: OptionalT[str] = None,
+        **kwargs: DictT[str, str],
     ) -> OptionalT[DictT[str, AnyT]]:
         """
         Finds an available AMI
 
         owner: AWS account ID or an alias such as `amazon`
-        name: AMI name, may contain wildcard
-        kwargs: Additional filters
+        name: Name of the AMI, can contain a wildcard
+        kwargs: Additional search filters, e.g. {"architecture": "x86_64"}
         """
-        filters = [
-            {"Name": "name", "Values": [name]},
-            {"Name": "state", "Values": ["available"]},
-        ]
+        filters_dict = {
+            "state": "available",
+        }
+        if name is not None:
+            filters_dict["name"] = name
         for k, v in kwargs.items():
-            assert isinstance(v, str)
-            filters.append({"Name": k, "Values": [v]})
+            if not isinstance(v, str):
+                raise TypeError(f"Invalid value type: {v}")
+            filters_dict[k] = v
 
-        images = self.ec2.describe_images(Owners=[owner], Filters=filters)["Images"]
+        filters: ListT[DictT[str, UnionT[str, ListT[str]]]] = []
+        for kf, vf in filters_dict.items():
+            filters.append({"Name": kf, "Values": [vf]})
+
+        if owner:
+            owners = [owner]
+        else:
+            owners = []
+
+        images = self.ec2.describe_images(Owners=owners, Filters=filters)["Images"]
         if images:
             return sorted(images, key=lambda i: i["CreationDate"], reverse=True)[0]
         return None
