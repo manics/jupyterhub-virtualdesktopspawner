@@ -1,12 +1,12 @@
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
 
 [build-system]
-requires = ["setuptools", "setuptools_scm"]
+requires = ["setuptools>=61", "setuptools_scm>=7"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "jupyterhub-virtualdesktopspawner"
-dynamic = ["version"]
+dynamic = ["dependencies", "version"]
 authors = [
   {name = "Simon Li"}
 ]
@@ -23,16 +23,14 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
 ]
-dependencies = [
-  "aiostream",
-  "boto3",
-  "botocore",
-  "jupyterhub-kubespawner",
-  "mypy-boto3-ec2",
-  "traitlets",
-]
 
 [project.urls]
 homepage = "https://github.com/manics/jupyterhub-virtualdesktopspawner"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools.packages.find]
+include = ["virtualdesktopspawner*"]
 
 [tool.setuptools_scm]

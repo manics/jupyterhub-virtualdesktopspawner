@@ -177,20 +177,24 @@ async def test_ssm(aws_session, instance_name, create_args, windows):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "owner,name,arch",
+    "owner,name,arch,ami_id,exists",
     [
-        ("amazon", "Windows_Server-", "x86_64"),
-        ("amazon", "al2022-ami-", "arm64"),
-        ("000000000000", "al2022-ami-", "arm64"),
+        ("amazon", "Windows_Server-*", "x86_64", None, True),
+        ("amazon", "al2022-ami-*", "arm64", None, True),
+        ("amazon", "al2022-ami-*", "arm64", "ami-*", True),
+        ("amazon", "al2022-ami-*", "arm64", "ami-nonexistent", False),
+        ("000000000000", "al2022-ami-*", "arm64", None, False),
     ],
 )
-async def test_find_ami(aws_session, instance_name, owner, name, arch):
+async def test_find_ami(aws_session, instance_name, owner, name, arch, ami_id, exists):
     esi = Ec2SsmInstance(aws_session, instance_name)
-    image = await esi.find_ami(owner=owner, name=f"{name}*", architecture=arch)
+    kwargs = {"owner": owner, "name": name, "architecture": arch}
+    if ami_id:
+        kwargs["image-id"] = ami_id
+    image = await esi.find_ami(**kwargs)
 
-    if owner == "000000000000":
-        assert not image
-    else:
+    assert bool(image) == exists
+    if exists:
         assert image["ImageOwnerAlias"] == owner
-        assert image["Name"].startswith(name)
+        assert image["Name"].startswith(name.rstrip("*"))
         assert image["Architecture"] == arch

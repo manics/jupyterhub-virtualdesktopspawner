@@ -5,6 +5,15 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+  PLATFORMS: linux/amd64,linux/arm64
+
 jobs:
   # https://github.com/pre-commit/action
   pre-commit:
@@ -40,8 +49,6 @@ jobs:
         run: |
           python -m pip install -r dev-requirements.txt
           npm install -g configurable-http-proxy
-      # - name: Update setuptools_scm version
-      #   run: python setup.py build
 
       - name: Run tests
         run: |
@@ -49,10 +56,47 @@ jobs:
           sleep 10
           python -m pytest tests -vs
 
+  container:
+    name: Container
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          flavor: latest=false
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/jupyterhub-virtualdesktopspawner
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to container registry
+        uses: docker/login-action@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push to container registry
+        uses: docker/build-push-action@v3
+        with:
+          build-args: |
+            SETUPTOOLS_SCM_PRETEND_VERSION=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '0.0.0'  }}
+          platforms: ${{ env.PLATFORMS }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+
   # https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
   publish-pypi:
     name: Pypi
-    if: startsWith(github.ref, 'refs/tags')
     needs:
       # Only publish if other jobs passed
       - pre-commit
@@ -61,11 +105,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
       - name: Build package
         run: |
-          python -mpip install wheel
-          python setup.py sdist bdist_wheel
+          python -mpip install build
+          python -mbuild .
+
       - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@v1.8.5
         with:
+          # TODO: Use OIDC https://github.com/github/docs/pull/24772/files
           password: ${{ secrets.PYPI_PASSWORD }}

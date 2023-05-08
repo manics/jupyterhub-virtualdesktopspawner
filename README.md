@@ -1,5 +1,7 @@
 # JupyterHub Virtual Desktop Spawner
 
+[![Build](https://github.com/manics/jupyterhub-virtualdesktopspawner/actions/workflows/workflow.yml/badge.svg)](https://github.com/manics/jupyterhub-virtualdesktopspawner/actions/workflows/workflow.yml)
+
 **⚠️⚠️⚠️⚠️⚠️ Under development ⚠️⚠️⚠️⚠️⚠️**
 
 Run Linux or Windows desktops with JupyterHub on public cloud and Kubernetes.
@@ -20,11 +22,11 @@ Use [z2jh-linuxdesktops.yaml](./configs/z2jh-linuxdesktops.yaml) as the Z2JH con
 
 Currently only AWS EC2 is supported.
 
-Create an IRSA role with the policy in [awsec2-iam-policy.json](./aws-iam/awsec2-iam-policy.json) so that JupyterHub can access EC2 and SSM. Ensure the role can be assumed by the `hub` service account in whichever Kubernetes namespace you're using.
+Create an [IRSA role](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) with the policy in [aws-ec2ssm-iam-policy.json](./aws-iam/aws-ec2ssm-iam-policy.json) so that JupyterHub can access EC2 and SSM.
+Ensure the role can be assumed by the `hub` service account in whichever Kubernetes namespace you're using.
+Alternatively create an IAM role and credentials, and pass them to the hub pod as environment variables.
 
 Use [z2jh-linuxdesktops.yaml](./configs/z2jh-windowsdesktops.yaml) as the Z2JH configuration. Change:
 
-- `c.Ec2DesktopSpawner.subnet_id`: THe VPC subnet ID that the instance should be created in
-- `c.Ec2DesktopSpawner.ami_id`: EC2 AMI ID
-- `c.Ec2DesktopSpawner.instance_type` = EC2 instance type("t3a.micro", config=True, help="EC2 instance type")
-- `c.Ec2DesktopSpawner.instance_profile_name`: Instance profile role nam, must allow SSM access
+- `hub.config.Ec2DesktopSpawner.subnet_id`: The VPC subnet ID that the instance should be created in
+- `hub.config.Ec2DesktopSpawner.instance_profile_name`: Instance profile role name, must allow SSM access
