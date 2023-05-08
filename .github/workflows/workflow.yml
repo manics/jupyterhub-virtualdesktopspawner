@@ -1,0 +1,71 @@
+# https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Build
+on:
+  push:
+  pull_request:
+
+jobs:
+  # https://github.com/pre-commit/action
+  pre-commit:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: pre-commit/action@v3.0.0
+
+  test:
+    name: Test
+    strategy:
+      # Keep running so we can see if other tests pass
+      fail-fast: false
+      matrix:
+        python:
+          - "3.10"
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "${{ matrix.python }}"
+          cache: pip
+          cache-dependency-path: "*requirements.txt"
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r dev-requirements.txt
+          npm install -g configurable-http-proxy
+      # - name: Update setuptools_scm version
+      #   run: python setup.py build
+
+      - name: Run tests
+        run: |
+          ./ci/run-localstack.sh -d
+          sleep 10
+          python -m pytest tests -vs
+
+  # https://packaging.python.org/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/
+  publish-pypi:
+    name: Pypi
+    if: startsWith(github.ref, 'refs/tags')
+    needs:
+      # Only publish if other jobs passed
+      - pre-commit
+      - test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - name: Build package
+        run: |
+          python -mpip install wheel
+          python setup.py sdist bdist_wheel
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.5
+        with:
+          password: ${{ secrets.PYPI_PASSWORD }}

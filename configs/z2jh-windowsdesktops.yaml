@@ -1,0 +1,40 @@
+# https://z2jh.jupyter.org/en/stable/resources/reference.html
+
+hub:
+  image:
+    name: docker.io/manics/k8s-hub
+    tag: devel
+    pullPolicy: Always
+  config:
+    KubeSpawner:
+      http_timeout: 60
+  extraConfig:
+    10-ec2spawner: |
+      from virtualdesktopspawner import Ec2DesktopSpawner
+      c.JupyterHub.spawner_class = Ec2DesktopSpawner
+
+singleuser:
+  image:
+    name: ghcr.io/manics/jupyter-guacamole
+    tag: main
+  storage:
+    type: none
+  # Use default entrypoint
+  cmd:
+  cloudMetadata:
+    blockWithIptables: false
+  extraEnv:
+    GUACD_HOST: localhost
+    GUACD_PORT: "4822"
+    # Optionally disable copy out and paste in
+    # DISABLE_COPY: "true"
+    # DISABLE_PASTE: "true"
+  extraContainers:
+    - name: guacd
+      image: docker.io/guacamole/guacd:1.5.0
+  # startTimeout: 300
+  networkPolicy:
+    egressAllowRules:
+      privateIPs: true
+  # Use the default UID from the image
+  uid:

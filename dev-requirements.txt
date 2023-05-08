@@ -1,0 +1,11 @@
+boto3
+boto3-stubs[essential]
+botocore
+botocore-stubs
+codecov
+jupyterhub
+pre-commit
+pytest
+pytest-asyncio
+pytest-cov
+PyYAML

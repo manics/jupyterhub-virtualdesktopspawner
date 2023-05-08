@@ -1,0 +1,38 @@
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jupyterhub-virtualdesktopspawner"
+dynamic = ["version"]
+authors = [
+  {name = "Simon Li"}
+]
+description = "Run Linux or Windows desktops with JupyterHub on public cloud and Kubernetes"
+readme = "README.md"
+requires-python = ">=3.7"
+license = {text = "MIT"}
+keywords = ["jupyterhub", "spawner"]
+classifiers = [
+  "Framework :: Jupyter",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+]
+dependencies = [
+  "aiostream",
+  "boto3",
+  "botocore",
+  "jupyterhub-kubespawner",
+  "mypy-boto3-ec2",
+  "traitlets",
+]
+
+[project.urls]
+homepage = "https://github.com/manics/jupyterhub-virtualdesktopspawner"
+
+[tool.setuptools_scm]
