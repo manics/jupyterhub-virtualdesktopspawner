@@ -11,7 +11,11 @@ Linux desktops can be run in Linux containers on Kubernetes.
 Windows desktops can only be run in a virtual machines- Microsoft does not allow desktops to be run in a Windows container.
 Support for AWS EC2 is provided.
 
-Apache Guacamole provide browser access to the desktops.
+Apache Guacamole, running on Kubernetes, provides browser access to the desktops.
+
+Example of connecting to a shutdown Windows desktop:
+
+[windows-existing-launch.webm](https://user-images.githubusercontent.com/1644105/236957323-5efb2a6c-0e4e-434c-a1e9-bd9a732f0589.webm)
 
 ## Setup: Linux desktops (containers)
 
@@ -30,3 +34,9 @@ Use [z2jh-linuxdesktops.yaml](./configs/z2jh-windowsdesktops.yaml) as the Z2JH c
 
 - `hub.config.Ec2DesktopSpawner.subnet_id`: The VPC subnet ID that the instance should be created in
 - `hub.config.Ec2DesktopSpawner.instance_profile_name`: Instance profile role name, must allow SSM access
+
+## More screenshots
+
+Example of creating a new Windows desktop:
+
+[windows-create-launch.webm](https://user-images.githubusercontent.com/1644105/236957513-2fa86617-6aeb-4530-b526-0b559ad13985.webm)
