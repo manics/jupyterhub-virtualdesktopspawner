@@ -91,7 +91,7 @@ class Ec2DesktopSpawner(KubeSpawner):
         help="Subnet ID to launch instance in",
     )
 
-    userdata = Unicode(config=True, allow_none=True, help="UserData block")
+    userdata = Unicode("", config=True, help="UserData block")
 
     volume_size = Int(30, config=True, help="Volume size in GB")
 
@@ -106,7 +106,11 @@ class Ec2DesktopSpawner(KubeSpawner):
         "0.0.0.0/0", config=True, help="CIDR to allow all outbound traffic to"
     )
 
-    windows = Bool(config=True, default=True, help="Whether this is a Windows instance")
+    windows = Bool(
+        config=True,
+        default=False,
+        help="Set to True if this is a Windows instance, should be autodetected from AMI metadata",
+    )
 
     # Non-config properties
 
@@ -147,10 +151,19 @@ class Ec2DesktopSpawner(KubeSpawner):
     def load_state(self, state: dict) -> None:
         super().load_state(state)
         self.ec2_connection_info = state.get("ec2_connection_info", {})
+        ami_id = state.get("ami_id")
+        if ami_id and self.ami_id and ami_id != self.ami_id:
+            self.log.warning(
+                f"Configured ami_id {self.ami_id} does not match loaded state {ami_id}"
+            )
+            self.ami_id = ami_id
+        self.windows = state.get("windows", self.windows)
 
     def get_state(self) -> JsonT:
         state = super().get_state()
         state["ec2_connection_info"] = self.ec2_connection_info
+        state["ami_id"] = self.ami_id
+        state["windows"] = self.windows
         return state
 
     async def _get_instance_ip(self) -> str:
@@ -158,34 +171,13 @@ class Ec2DesktopSpawner(KubeSpawner):
         return instance["NetworkInterfaces"][0]["PrivateIpAddress"]
 
     async def _update_ec2_connection_windows(self) -> None:
-        username = "Administrator"
-        password = self.ec2_connection_info.get(
-            "password", "".join(choices(string.ascii_letters + string.digits, k=32))
-        )
+        username, password = self._get_username_password()
 
+        # Note if this is called too early the EC2Launch script may overwrite the
+        # password. Set the password in userdata instead, and only use this as a backup
         win_command = f"net user {username} {password}"
         self._put_ec2_event({"message": "Setting windows password"})
-
-        for _ in range(5):
-            await self.ec2instance.ssm_commands([win_command])
-            # TODO: Race condition between this, and the instance automatically
-            # generating a password
-            # Sometimes this doesn't actually set the password.
-            # Test credentials by mounting and unmounting a network share and retry if
-            # necessary
-            test = await self.ec2instance.ssm_commands(
-                [
-                    f"net use \\\\127.0.0.1\\c$ /user:Administrator {password}",
-                    "$rc = $LASTEXITCODE",
-                    "if ($rc -eq 0) { net use /delete \\\\127.0.0.1\\c$ }",
-                    "Exit $rc",
-                ]
-            )
-            if test["ResponseCode"] == 0:
-                break
-        if test["ResponseCode"] != 0:
-            self._put_ec2_event({"message": "Failed to set windows password"})
-            raise RuntimeError("Failed to set Windows password")
+        await self.ec2instance.ssm_commands([win_command])
 
         self.ec2_connection_info = {
             "username": username,
@@ -193,6 +185,49 @@ class Ec2DesktopSpawner(KubeSpawner):
             "hostname": await self._get_instance_ip(),
             "protocol": "rdp",
         }
+
+    async def _get_ami(self):
+        if self.ami_id:
+            ami_kwargs = {"image-id": self.ami_id}
+        else:
+            ami_kwargs = self.ami_search
+        self._put_ec2_event({"message": f"Searching for AMI {ami_kwargs}"})
+        ami = await self.ec2instance.find_ami(**ami_kwargs)
+        if not ami:
+            raise RuntimeError(f"No matching AMI found {ami_kwargs}")
+        self.ami_id = ami["ImageId"]
+        if ami["Platform"] == "windows":
+            self.windows = True
+        return ami
+
+    def _get_username_password(self):
+        username = self.ec2_connection_info.get("username")
+        if not username:
+            if self.windows:
+                username = "Administrator"
+                self.ec2_connection_info["username"] = username
+            else:
+                raise RuntimeError("Unknown EC2 username")
+        password = self.ec2_connection_info.get("password")
+        if not password:
+            password = "".join(choices(string.ascii_letters + string.digits, k=32))
+            self.ec2_connection_info["password"] = password
+        return username, password
+
+    def _get_userdata(self):
+        if self.windows:
+            username, password = self._get_username_password()
+            userdata = "\n".join(
+                [
+                    "<powershell>",
+                    f"net user {username} {password}",
+                    self.userdata,
+                    "</powershell>",
+                ]
+            )
+        else:
+            userdata = self.userdata
+        return userdata
 
     async def start(self) -> TupleT[str, int]:
         instance_name = self.pod_name
@@ -216,18 +251,14 @@ class Ec2DesktopSpawner(KubeSpawner):
         if not instance:
             self.ec2_connection_info = {}
             self._put_ec2_event({"message": f"Creating instance [{instance_name}]"})
-            ami_id = self.ami_id
-            if not ami_id:
-                self._put_ec2_event({"message": f"Searching for AMI {self.ami_search}"})
-                ami = await self.ec2instance.find_ami(**self.ami_search)
-                if not ami:
-                    raise RuntimeError(f"No matching AMI found {self.ami_search}")
-                ami_id = ami["ImageId"]
+
+            await self._get_ami()
+
             instance = await self.ec2instance.create(
-                ami_id=ami_id,
+                ami_id=self.ami_id,
                 instance_type=self.instance_type,
                 instance_profile_name=self.instance_profile_name,
-                userdata=self.userdata,
+                userdata=self._get_userdata(),
                 volume_size=self.volume_size,
                 shutdown_terminate=self.shutdown_terminate,
                 ingress_rules=[(self.cidr_in, 3389, 3389)],
