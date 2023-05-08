@@ -30,4 +30,7 @@ homepage = "https://github.com/manics/jupyterhub-virtualdesktopspawner"
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
+[tool.setuptools.packages.find]
+include = ["virtualdesktopspawner*"]
+
 [tool.setuptools_scm]
