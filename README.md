@@ -8,7 +8,7 @@ Run Linux or Windows desktops with JupyterHub on public cloud and Kubernetes.
 
 Linux desktops can be run in Linux containers on Kubernetes.
 
-Windows desktops can only be run in a virtual machines- Microsoft does not allow desktops to be run in a Windows container.
+Windows desktops can only be run in a virtual machine- Microsoft does not allow desktops to be run in a Windows container.
 Support for AWS EC2 is provided.
 
 Apache Guacamole, running on Kubernetes, provides browser access to the desktops.
@@ -19,7 +19,7 @@ Example of connecting to a shutdown Windows desktop:
 
 ## Setup: Linux desktops (containers)
 
-Install JupyterHub following [Zero to JupyterHub with Kubernetes](https://z2jh.jupyter.org/en/stable/).
+p
 Use [z2jh-linuxdesktops.yaml](./configs/z2jh-linuxdesktops.yaml) as the Z2JH configuration.
 
 ## Setup: Windows desktops (virtual machines)
@@ -30,7 +30,8 @@ Create an [IRSA role](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles
 Ensure the role can be assumed by the `hub` service account in whichever Kubernetes namespace you're using.
 Alternatively create an IAM role and credentials, and pass them to the hub pod as environment variables.
 
-Use [z2jh-linuxdesktops.yaml](./configs/z2jh-windowsdesktops.yaml) as the Z2JH configuration. Change:
+Install JupyterHub following [Zero to JupyterHub with Kubernetes](https://z2jh.jupyter.org/en/stable/).
+Use [z2jh-windowsdesktops.yaml](./configs/z2jh-windowsdesktops.yaml) as the Z2JH configuration. Change:
 
 - `hub.config.Ec2DesktopSpawner.subnet_id`: The VPC subnet ID that the instance should be created in
 - `hub.config.Ec2DesktopSpawner.instance_profile_name`: Instance profile role name, must allow SSM access
