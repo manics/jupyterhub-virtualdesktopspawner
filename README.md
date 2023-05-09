@@ -19,7 +19,7 @@ Example of connecting to a shutdown Windows desktop:
 
 ## Setup: Linux desktops (containers)
 
-p
+Install JupyterHub following [Zero to JupyterHub with Kubernetes](https://z2jh.jupyter.org/en/stable/).
 Use [z2jh-linuxdesktops.yaml](./configs/z2jh-linuxdesktops.yaml) as the Z2JH configuration.
 
 ## Setup: Windows desktops (virtual machines)
