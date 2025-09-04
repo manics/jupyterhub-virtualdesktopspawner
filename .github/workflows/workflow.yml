@@ -115,7 +115,7 @@ jobs:
 
       - name: Publish to PyPI
         if: startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@v1.12.4
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           # TODO: Use OIDC https://github.com/github/docs/pull/24772/files
           password: ${{ secrets.PYPI_PASSWORD }}
