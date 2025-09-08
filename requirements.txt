@@ -1,6 +1,6 @@
 aiostream>=0.4.5
 boto3>=1
 botocore>=1
-jupyterhub-kubespawner>=4.2.0,<7
+jupyterhub-kubespawner>=4.2.0,<8
 mypy-boto3-ec2>=1
 traitlets>=5
